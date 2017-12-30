@@ -4,8 +4,11 @@ import * as _ from 'lodash';
 
 export class GameEngine extends GE {
 
+    map: number[][];
+
     constructor(options) {
         super(options);
+        this.map = [[]];
     }
 
     start() {
@@ -13,22 +16,22 @@ export class GameEngine extends GE {
         super.start();
 
         this.worldSettings = {
-            width: 400,
-            height: 400,
+            width: 109,
+            height: 69,
         };
 
     }
 
     addPlayer(playerId: number) {
 
-        const position = new serialize.TwoVector(_.random(400), _.random(400));
-        
+        const position = new serialize.TwoVector(_.random(this.worldSettings.width), _.random(this.worldSettings.height));
+
         const player = new Player(++this.world.idCount, position);
         player.playerId = playerId;
-        
+
         this.addObjectToWorld(player);
         console.log(`player added: ${player.toString()}`);
-        
+
         return player;
     }
 
@@ -39,7 +42,6 @@ export class GameEngine extends GE {
         const player = this.world.getPlayerObject<Player>(playerId);
 
         if (player) {
-
             if (inputData.input === 'up') {
                 player.position.y -= 1;
             } else if (inputData.input === 'down') {
@@ -49,7 +51,7 @@ export class GameEngine extends GE {
             } else if (inputData.input === 'left') {
                 player.position.x -= 1;
             }
-            
+
         }
     }
 }
