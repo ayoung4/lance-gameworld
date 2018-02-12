@@ -7,7 +7,10 @@
     "start": "npm-run-all --parallel build serve",
     "serve": "nodemon ./main.js",
     "build": "webpack --watch",
-    "test": "ts-mocha src/**/*.tests.ts"
+    "test": "ts-mocha src/**/*.tests.ts",
+    "test-graph": "ts-mocha src/shared/Graph/**/*.tests.ts",
+    "test-graph-class": "ts-mocha src/shared/Graph/tests/classes/**/*.tests.ts",
+    "test-graph-algorithms": "ts-mocha src/shared/Graph/tests/algorithms/**/*.tests.ts"
   },
   "author": "",
   "license": "ISC",

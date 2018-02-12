@@ -2,10 +2,24 @@ import * as _ from 'lodash';
 import * as Queue from 'tinyqueue';
 import { count } from 'typescript-stl';
 import * as randomNormal from 'random-normal';
+import { IPositionlike } from 'Shared/Graph/GridGraph';
 
 export interface IComparable<T> {
-    compare(other: T): boolean;
     equals(other: T): boolean;
+}
+
+interface IWrapper<T> {
+    val: T
+}
+
+class ComparablePrimitive<T> implements IWrapper<T> {
+    val: T
+    constructor(val: T) {
+        this.val = val;
+    }
+    equals(other: IWrapper<T>) {
+        return this.val == other.val;
+    }
 }
 
 type idType = string;
@@ -106,19 +120,19 @@ export class Graph<T extends IComparable<any>> {
         }
     }
     lExpand(numSteps: number, prodRule: (value: T, index?: number) => T[]) {
-        const visited = [];
+        // const visited = [];
         _.forEach(_.range(numSteps), () => {
             const Q = new Queue(_.range(this.vertices.length)) as Q<idType>;
             _.forEach(_.range(Q.length), (i) => {
                 const v = Q.pop();
-                if (!_.includes(visited, v)) {
-                    const value = this.vertices[v];
-                    _.forEach(prodRule(value, i), (successor) => {
-                        this.addValue(successor);
-                        this.addEdge(this.vertices[v], successor);
-                    });
-                    visited.push(v);
-                }
+                // if (!_.includes(visited, v)) {
+                const value = this.vertices[v];
+                _.forEach(prodRule(value, i), (successor) => {
+                    this.addValue(successor);
+                    this.addEdge(this.vertices[v], successor);
+                });
+                // visited.push(v);
+                // }
             });
         });
     }
@@ -185,17 +199,17 @@ export class Graph<T extends IComparable<any>> {
         while (visited.length < this.vertices.length) {
             const neighbors = this.neighbors(String(v));
             const unvisitedNeighbors = _.filter(neighbors, (w) => !_.includes(visited, w));
-            if (unvisitedNeighbors.length) {
-                const w = unvisitedNeighbors[_.random(unvisitedNeighbors.length - 1)];
-                visited.push(w);
-                bodies[bodyCount].push(this.vertices[w]);
-                S.push(v);
-                v = w;
-            } else if (S.length) {
+            if (unvisitedNeighbors.length > 0) {
+                _.forEach(unvisitedNeighbors, (w) => {
+                    visited.push(w);
+                    bodies[bodyCount].push(this.vertices[w]);
+                    S.push(v);
+                });
+            } else if (S.length > 0) {
                 v = S.pop();
             } else {
                 const unvisted = _.filter(_.range(this.vertices.length - 1), (w) => !_.includes(visited, w));
-                v = unvisted[_.random(0, unvisted.length - 1)];
+                v = unvisted[0];
                 visited.push(v);
                 bodyCount++;
                 bodies[bodyCount] = [this.vertices[v]];
@@ -210,6 +224,8 @@ export class Graph<T extends IComparable<any>> {
         birthRate?: number;
         smoothing?: number;
         outDegree?: number;
+        pruning?: number;
+        aliveFn?: (val: T) => boolean;
     }): { alive: T[], dead: T[] } {
         const opts = {
             chanceToStartAlive: 0.5,
@@ -218,6 +234,8 @@ export class Graph<T extends IComparable<any>> {
             birthRate: 1,
             smoothing: 0,
             outDegree: undefined,
+            pruning: undefined,
+            aliveFn: (v: T) => false,
         }
         _.extend(opts, !!options ? options : {});
 
@@ -227,6 +245,8 @@ export class Graph<T extends IComparable<any>> {
             maxOutDegree = _.max(outDegrees);
         }
 
+        const aliveFn = _.memoize(opts.aliveFn);
+
         let states = _.map(_.range(this.vertices.length), () => {
             if (_.random(true) < opts.chanceToStartAlive) {
                 return 1;
@@ -234,12 +254,14 @@ export class Graph<T extends IComparable<any>> {
                 return 0;
             }
         });
+
         const SURVIVE_MIN = 4 / (opts.starvationRate);
         const SURVIVE_MAX = 8 * (opts.overpopRate);
         const RESURRECT_MIN = Math.round(5 / (opts.birthRate));
         const RESURRECT_MAX = Math.round(5 * (opts.birthRate));
         const SMOOTHING_MIN = 2;
         const SMOOTHING_MAX = 5;
+
         _.forEach(_.range(numSteps), (i) => {
             let aliveCounts = _.map(states, (s, v) => {
                 const neighbors = this.neighbors(String(v));
@@ -250,18 +272,22 @@ export class Graph<T extends IComparable<any>> {
             const newStates = _.map(states, (oldState, v) => {
                 const neighbors = this.neighbors(String(v));
                 const alive = aliveCounts[v];
-                if (oldState) {
-                    if (alive >= SURVIVE_MIN && alive <= SURVIVE_MAX) {
-                        return 1;
+                if (!aliveFn(this.values[v])) {
+                    if (oldState) {
+                        if (alive >= SURVIVE_MIN && alive <= SURVIVE_MAX) {
+                            return 1;
+                        } else {
+                            return 0;
+                        }
                     } else {
-                        return 0;
+                        if (alive >= RESURRECT_MIN && alive <= RESURRECT_MAX) {
+                            return 1;
+                        } else {
+                            return 0;
+                        }
                     }
                 } else {
-                    if (alive >= RESURRECT_MIN && alive <= RESURRECT_MAX) {
-                        return 1;
-                    } else {
-                        return 0;
-                    }
+                    return 1;
                 }
             });
             let smoothedStates = newStates;
@@ -273,7 +299,7 @@ export class Graph<T extends IComparable<any>> {
                     }, 0);
                 });
                 smoothedStates = _.map(smoothedStates, (oldState, v) => {
-                    if(_.random(10) === 5) {
+                    if (_.random(10) === 5) {
                         const alive = aliveCounts[v];
                         if (alive <= SMOOTHING_MIN) {
                             return 0;
@@ -283,7 +309,31 @@ export class Graph<T extends IComparable<any>> {
                     }
                     return oldState;
                 });
-            })
+            });
+            if (typeof opts.pruning === 'number') {
+                const aliveG = new Graph<ComparablePrimitive<string>>();
+                const unpruned = _.filter(_.range(this.vertices.length), (i) => !states[i]);
+                const unprunedVertices = _.map(unpruned, (u) => new ComparablePrimitive(String(u)));
+                _.forEach(unprunedVertices, (v) => {
+                    aliveG.addValue(v);
+                });
+                _.forEach(unprunedVertices, (v) => {
+                    _.forEach(this.adjMatrix[v.val], (w) => {
+                        if (!states[w]) {
+                            aliveG.addEdge(v, new ComparablePrimitive(String(w)));
+                        }
+                    });
+                });
+                const components = aliveG.floodFill();
+                console.log(components.length);
+                const smallComponents = _.filter(components, (c) => c.length <= opts.pruning);
+                _.forEach(smallComponents, (c) => {
+                    console.log(c.length);
+                    _.forEach(c, (v) => {
+                        smoothedStates[v.val] = 0;
+                    });
+                });
+            }
             states = smoothedStates;
         });
         const alive = _.filter(this.vertices, (data, i) => !!states[i]);

@@ -1,5 +1,9 @@
 import { render } from 'lance-gg';
-import { GameEngine } from 'Shared/engine/GameEngine';
+import { 
+    GameEngine,
+    terrainTypes,
+    barrierTypes,
+} from 'Shared/engine/GameEngine';
 
 import * as p5 from 'p5';
 import * as _ from 'lodash';
@@ -9,7 +13,7 @@ const RENDER_MODES = {
     world: 0,
     player: 1,
 }
-const RENDER_MODE = RENDER_MODES.player;
+const RENDER_MODE = RENDER_MODES.world;
 
 interface IColor {
     r: number;
@@ -83,17 +87,16 @@ export class Renderer extends render.Renderer {
         const topBound = top < tiles[0].length ? top : tiles[0].length - 1
         _.forEach(_.range(leftBound, rightBound), (x, i) => {
             _.forEach(_.range(bottomBound, topBound), (y, j) => {
-                if (tiles[x][y] === 0) {
+                if (tiles[x][y] === terrainTypes.grass) {
                     this.setColor(colors.green)
-                } else if (tiles[x][y] === 1) {
+                } else if (tiles[x][y] === terrainTypes.forest) {
                     this.setColor(colors.lightGreen)
-                } else if (tiles[x][y] === 2) {
+                } else if (tiles[x][y] === terrainTypes.mountain) {
                     this.setColor(colors.brown)
-                } else if (tiles[x][y] === 3) {
+                } else if (tiles[x][y] === barrierTypes.rock) {
                     this.setColor(colors.darkBrown)
-                } else if (tiles[x][y] === 4) {
+                } else if (tiles[x][y] === barrierTypes.tree) {
                     this.setColor(colors.darkGreen)
-                    this.renderer.rect(i * RES, j * RES, RES, RES);
                 }
                 this.renderer.noStroke();
                 this.renderer.rect(i * RES, j * RES, RES, RES);
@@ -110,15 +113,15 @@ export class Renderer extends render.Renderer {
     drawTiles(tiles: number[][]) {
         _.forEach(tiles, (row, x) => {
             _.forEach(row, (tile, y) => {
-                if (tile === 0) {
+                if (tiles[x][y] === terrainTypes.grass) {
                     this.setColor(colors.green)
-                } else if (tile === 1) {
+                } else if (tiles[x][y] === terrainTypes.forest) {
                     this.setColor(colors.lightGreen)
-                } else if (tile === 2) {
+                } else if (tiles[x][y] === terrainTypes.mountain) {
                     this.setColor(colors.brown)
-                } else if (tile === 3) {
+                } else if (tiles[x][y] === barrierTypes.rock) {
                     this.setColor(colors.darkBrown)
-                } else if (tile === 4) {
+                } else if (tiles[x][y] === barrierTypes.tree) {
                     this.setColor(colors.darkGreen)
                 }
                 this.renderer.noStroke();

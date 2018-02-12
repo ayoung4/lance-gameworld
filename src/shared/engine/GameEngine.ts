@@ -2,6 +2,17 @@ import { serialize, GameEngine as GE } from 'lance-gg';
 import { Player } from 'Shared/engine/Player';
 import * as _ from 'lodash';
 
+export const terrainTypes = {
+    grass: 3,
+    forest: 4,
+    mountain: 5,
+}
+
+export const barrierTypes = {
+    rock: 1,
+    tree: 2,
+}
+
 export class GameEngine extends GE {
 
     map: number[][];
